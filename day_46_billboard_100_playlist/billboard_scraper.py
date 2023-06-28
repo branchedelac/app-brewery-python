@@ -1,12 +1,10 @@
 import re
-
-import requests
 from bs4 import BeautifulSoup
 import requests
 
 class BillboardScraper:
     def __init__(self):
-        pass
+        self.songs = []
 
     def scrape_billboard_hot_100(self, date):
         endpoint = "https://www.billboard.com/charts/hot-100"
@@ -14,7 +12,6 @@ class BillboardScraper:
         return BeautifulSoup(response.text, "html.parser")
 
     def parse_soup(self, soup):
-        songs = []
         chart_items = soup.find_all(name="ul", class_="o-chart-results-list-row")
         for item in chart_items:
             title = item.find(name="h3", class_="c-title").getText()
@@ -29,5 +26,5 @@ class BillboardScraper:
                 "title": title.replace("\n", "").replace("\t", ""),
                 "artist": artist.replace("\n", "").replace("\t", "")
             }
-            songs.append(song)
-        return songs
+            self.songs.append(song)
+        return self.songs
