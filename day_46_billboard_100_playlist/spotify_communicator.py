@@ -1,6 +1,8 @@
 import random
 import string
 import re
+import time
+
 from dotenv import load_dotenv
 import requests
 import os
@@ -65,6 +67,11 @@ class SpotifyCommunicator:
         self.replace_token_in_dotenv(token)
         return token
 
+    def get_authorized_user(self):
+        response = requests.get("https://api.spotify.com/v1/me", headers=self.bearer_header)
+        response.raise_for_status()
+        return response.json()
+
     def replace_token_in_dotenv(self, token):
         with open(".env", "r") as f:
             lines = f.readlines()
@@ -73,27 +80,33 @@ class SpotifyCommunicator:
         with open(".env", "w") as f:
             print(*values, file=f, sep="\n")
 
-
-    def get_artist_by_id(self, artist_id):
-        url = f"https://api.spotify.com/v1/artists/{artist_id}"
-        response = requests.get(url=url, headers=self.bearer_header)
-        response.raise_for_status()
-
-    def search_track_by_keyword(self, search_term: str) -> list:
+    def find_song_by_keyword(self, songs: list) -> list:
         url = "https://api.spotify.com/v1/search"
-        params = {"q": search_term,
-                  "limit": 20,
-                  "type": "track",
-                  "market": "SE"}
-        response = requests.get(url=url, headers=self.bearer_header, params=params)
-        response.raise_for_status()
-        return response.json()["tracks"]["items"]
+        song_uris = []
+        for song in songs:
+            search_term = f"{song['artist']} {song['title']}"
+            params = {"q": search_term,
+                      "limit": 20,
+                      "type": "track",
+                      "market": "SE"}
+            response = requests.get(url=url, headers=self.bearer_header, params=params)
+            response.raise_for_status()
 
-    def get_authorized_user(self):
-        response = requests.get("https://api.spotify.com/v1/me", headers=self.bearer_header)
-        response.raise_for_status()
-        return response.json()
+            tracks = response.json()["tracks"]["items"]
+            first_title_match = self.get_first_title_match(tracks, song)
+            if first_title_match:
+                song_uris.append(first_title_match)
+            else:
+                print(f"No matching Spotify track found for: {song['artist']} - {song['title']}")
+        return song_uris
 
+    def get_first_title_match(self, tracks, song):
+        for idx, track in enumerate(tracks):
+            if song["title"].lower() in track["name"].lower() or track["name"].lower() in song["title"].lower():
+                return track["uri"]
+            else:
+
+                self.get_first_title_match(tracks[idx + 1:], song)
 
     def get_user_playlists(self):
         url = f"https://api.spotify.com/v1/users/{self.user_id}/playlists"
@@ -124,12 +137,14 @@ class SpotifyCommunicator:
         response.raise_for_status()
         playlist_info = response.json()
         print(
-            f"New playlist created for {self.user_id}: {playlist_info['name']}\n{playlist_info['external_urls']['spotify']}"
+            f"New playlist created for {self.user_id}: {playlist_info['name']}"
         )
         playlist_id = playlist_info["id"]
-        return playlist_id
+        playlist_url = playlist_info['external_urls']['spotify']
+        return playlist_id, playlist_url
 
-    def add_songs_to_play_list(self, playlist_id, song_uris):
+    def add_songs_to_playlist(self, playlist_id, song_uris):
+        time.sleep(10)
         url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
         headers = {**self.bearer_header, **{"Content-Type": "application/json"}}
         payload = {
@@ -137,6 +152,10 @@ class SpotifyCommunicator:
         }
         response = requests.post(url=url, headers=headers, json=payload)
         response.raise_for_status()
-        print("Songs successfully added to playlist!")
+        print(f"\nSuccessfully added {len(song_uris)} songs to playlist!")
 
-
+    @staticmethod
+    def get_artist_by_id(self, artist_id):
+        url = f"https://api.spotify.com/v1/artists/{artist_id}"
+        response = requests.get(url=url, headers=self.bearer_header)
+        response.raise_for_status()
