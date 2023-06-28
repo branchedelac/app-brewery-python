@@ -10,15 +10,19 @@ import base64
 class SpotifyCommunicator:
     def __init__(self):
         load_dotenv()
+
         self.client_id = os.getenv("SPOTIFY_CLIENT_ID")
         self.client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
         self.redirect_uri = os.getenv("SPOTIFY_REDIRECT_URI")
         self.token = os.getenv("SPOTIFY_TOKEN")
-        if not self.token:
+        try:
+            self.bearer_header = {"Authorization": f"Bearer  {self.token}"}
+            self.user_id = self.get_authorized_user()["id"]
+        except requests.exceptions.HTTPError:
             self.auth_code = self.get_authorization_code()
             self.token = self.get_token()
-        self.bearer_header = {"Authorization": f"Bearer  {self.token}"}
-        self.user_id = self.get_authorized_user()["id"]
+            self.bearer_header = {"Authorization": f"Bearer  {self.token}"}
+            self.user_id = self.get_authorized_user()["id"]
 
     def get_authorization_code(self):
         url = 'https://accounts.spotify.com/authorize'
@@ -58,10 +62,17 @@ class SpotifyCommunicator:
         response.raise_for_status()
         token = response.json()["access_token"]
 
-        with open(".env", "a") as f:
-            f.write(f"\nSPOTIFY_TOKEN={token}")
-
+        self.replace_token_in_dotenv(token)
         return token
+
+    def replace_token_in_dotenv(self, token):
+        with open(".env", "r") as f:
+            lines = f.readlines()
+        values = [v.replace('\n', '') for v in lines if "SPOTIFY_TOKEN" not in v]
+        values.append(f"SPOTIFY_TOKEN={token}")
+        with open(".env", "w") as f:
+            print(*values, file=f, sep="\n")
+
 
     def get_artist_by_id(self, artist_id):
         url = f"https://api.spotify.com/v1/artists/{artist_id}"
@@ -80,7 +91,9 @@ class SpotifyCommunicator:
 
     def get_authorized_user(self):
         response = requests.get("https://api.spotify.com/v1/me", headers=self.bearer_header)
+        response.raise_for_status()
         return response.json()
+
 
     def get_user_playlists(self):
         url = f"https://api.spotify.com/v1/users/{self.user_id}/playlists"

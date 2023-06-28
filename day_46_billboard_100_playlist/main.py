@@ -16,8 +16,9 @@ def get_first_title_match(tracks, song):
         else:
             get_first_title_match(tracks[idx + 1:], song)
 
+
 # Run
-date = input("Which date do you want to create a platlist for? (YYYY-MM-DD) ")
+date = input("Which date do you want to create a playlist for? (YYYY-MM-DD) ")
 
 if test_mode:
     date = "1989-05-21"
