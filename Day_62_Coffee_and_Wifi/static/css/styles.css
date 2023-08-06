@@ -2,12 +2,18 @@
 your web pages for the styles to be rendered. */
 
 body {
-background-color: #333;
+background-color: #bcaab7;
 color: white;
 }
 
 a {
-    color: #ffc107;
+    color: #5c7464;
+}
+
+.btn-green {
+background-color: #aabcb0;
+color: white;
+border: none;
 }
 
 .jumbotron {
@@ -16,7 +22,7 @@ a {
   margin: 0;
   height: 100vh;
   color: white;
-  background-color: #333;
+  background-color: #bcaab7;
 }
 
 .space-above {
